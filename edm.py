@@ -3,7 +3,7 @@ import numpy as np
 
 
 def ionisation(d):
-    return 0.01 * np.exp(4.6 * d)
+    return 0.01 * np.exp(4.6 * d) if d < 2 else np.inf
 
 
 def voltage(d):
@@ -12,8 +12,7 @@ def voltage(d):
 
 class NumpyEDM1(gym.Env):
     """
-    Drills an hole of a given area,
-    produces 1000 sparks between control steps
+    Drills an hole of a given area
 
     clear distance    100 mm
     sparking gap      100 μm
@@ -31,7 +30,7 @@ class NumpyEDM1(gym.Env):
 
     def __init__(self, area):
         self.area = area  # mm^2
-        self.zrr = self.mrr / area
+        self.zrr_at_30V = self.mrr_at_30V / area
 
         self.z_electrode = None  # μm
         self.z_material = None  # μm
@@ -41,7 +40,6 @@ class NumpyEDM1(gym.Env):
     def spark(self, Δt=100_000):
 
         voltages = []
-        durations = []
 
         while Δt > 0:
             d = self.z_electrode - self.z_material
@@ -67,10 +65,12 @@ class NumpyEDM1(gym.Env):
             self.z_material -= Δz_material
             self.debris += Δz_material
             Δt -= (Δt_ionisation + spark_duration)
-            voltages.append(voltage)
-            durations.append(spark_duration)
+            voltages.append(spark_voltage)
 
-        return voltages, durations
+        if voltages:
+            return np.array([np.mean(voltages), len(voltages) / 1000])
+        else:
+            return np.array([0, 0])
 
     def step(self, action):
 
