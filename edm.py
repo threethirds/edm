@@ -1,18 +1,56 @@
 import gym
+from numba import jit
 import numpy as np
 
 
+@jit(nopython=True)
 def ionisation(d):
     return 0.01 * np.exp(4.6 * d) if d < 2 else np.inf
 
 
+@jit(nopython=True)
 def voltage(d):
     return 6.9 * np.exp(1.3 * d)
 
 
+def jit_spark(Δt, d, debris, sparking_gap, spark_duration, zrr_at_30V):
+
+    voltages = []
+    Δz = 0
+
+    while Δt > 0:
+
+        d_noisy = d / sparking_gap + 0.1 * np.random.rand()
+
+        # Time for a spark to form
+        if d_noisy > 2:  # infinity, never fires
+            break
+        else:
+            Δt_ionisation = ionisation(d_noisy)
+
+        # Voltage of the spark
+        spark_voltage = voltage(d_noisy)
+
+        # Duration of the spark (constant in this model)
+        spark_duration = spark_duration
+
+        # material removed
+        Δz_energy = zrr_at_30V * spark_voltage * spark_duration / 30 / 10 ** 6
+        Δz_material = max(0, 1 - debris / 100) * Δz_energy
+
+        # update state
+        Δt -= (Δt_ionisation + spark_duration)
+        voltages.append(spark_voltage)
+        d += Δz_material
+        debris += Δz_material
+        Δz += Δz_material
+
+    return voltages, Δz
+
+
 class NumpyEDM1(gym.Env):
     """
-    Drills an hole of a given area
+    Drills a hole of a given area
 
     clear distance    100 mm
     sparking gap      100 μm
@@ -39,33 +77,17 @@ class NumpyEDM1(gym.Env):
 
     def spark(self, Δt=100_000):
 
-        voltages = []
+        d = self.z_electrode - self.z_material
 
-        while Δt > 0:
-            d = self.z_electrode - self.z_material
+        voltages, Δz = jit_spark(Δt=Δt,
+                                 d=d,
+                                 debris=self.debris,
+                                 sparking_gap=self.sparking_gap,
+                                 spark_duration=self.spark_duration,
+                                 zrr_at_30V=self.zrr_at_30V)
 
-            # Time for a spark to form
-            if d > 2 * self.sparking_gap:
-                Δt_ionisation = np.inf
-                break
-            else:
-                Δt_ionisation = ionisation(d / self.sparking_gap + 0.1 * np.random.rand())
-
-            # Voltage of the spark
-            spark_voltage = voltage(d / self.sparking_gap + 0.1 * np.random.rand())
-
-            # Duration of the spark (constant in this model)
-            spark_duration = self.spark_duration
-
-            # material removed
-            Δz_energy = self.zrr_at_30V * spark_voltage * spark_duration / 30 / 10 ** 6
-            Δz_material = max(0, 1 - self.debris / 100) * Δz_energy
-
-            # update state
-            self.z_material -= Δz_material
-            self.debris += Δz_material
-            Δt -= (Δt_ionisation + spark_duration)
-            voltages.append(spark_voltage)
+        self.z_material -= Δz
+        self.debris += Δz
 
         if voltages:
             return np.array([np.mean(voltages), len(voltages) / 1000])
@@ -87,7 +109,7 @@ class NumpyEDM1(gym.Env):
             reward = np.float32(-1)
         elif action == 3:
             self.debris = 0
-            self.t += 10**6
+            self.t += 10 ** 6
 
         if self.z_electrode <= self.z_material:
             end = np.bool8(True)
@@ -95,7 +117,7 @@ class NumpyEDM1(gym.Env):
 
         sparks = self.spark()
 
-        if self.t > 10**9:
+        if self.t > 10 ** 9:
             end = np.bool8(True)
 
         return sparks, reward, end, {}
