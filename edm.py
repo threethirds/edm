@@ -73,7 +73,6 @@ class NumpyEDM1(gym.Env):
         self.z_electrode = None  # μm
         self.z_material = None  # μm
         self.debris = None  # μm
-        self.t = None
 
     def spark(self, Δt=100_000):
 
@@ -109,7 +108,6 @@ class NumpyEDM1(gym.Env):
             reward = np.float32(-1)
         elif action == 3:
             self.debris = 0
-            self.t += 10 ** 6
 
         if self.z_electrode <= self.z_material:
             end = np.bool8(True)
@@ -117,16 +115,12 @@ class NumpyEDM1(gym.Env):
 
         sparks = self.spark()
 
-        if self.t > 10 ** 9:
-            end = np.bool8(True)
-
         return sparks, reward, end, {}
 
     def reset(self):
         self.z_electrode = 0  # μm
         self.z_material = -100  # μm
         self.debris = 0  # μm
-        self.t = 0
 
         sparks = self.spark()
 
