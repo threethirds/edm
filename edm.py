@@ -92,7 +92,7 @@ class NumpyEDM1(gym.Env):
         if voltages:
             return np.array([np.mean(voltages), len(voltages) / 1000])
         else:
-            return np.array([0, 0])
+            return np.array([100, 0])
 
     def step(self, action):
 
