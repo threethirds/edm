@@ -1,3 +1,4 @@
+import gym3
 import gym
 from numba import jit
 import numpy as np
@@ -14,7 +15,6 @@ def voltage(d):
 
 
 def jit_spark(Δt, d, debris, sparking_gap, spark_duration, zrr_at_30V):
-
     voltages = []
     Δz = 0
 
@@ -48,7 +48,7 @@ def jit_spark(Δt, d, debris, sparking_gap, spark_duration, zrr_at_30V):
     return voltages, Δz
 
 
-class NumpyEDM1(gym.Env):
+class NumpyEDM1(gym3.Env):
     """
     Drills a hole of a given area
 
@@ -73,6 +73,11 @@ class NumpyEDM1(gym.Env):
         self.z_electrode = None  # μm
         self.z_material = None  # μm
         self.debris = None  # μm
+
+        self.observation_space = gym.spaces.Box(low=0, high=255, shape=(2,), dtype=np.uint8)
+        self.action_space = np.arange(4)
+        self.metadata = None
+        self.reward_range = (-1, 1)
 
     def spark(self, Δt=100_000):
 
@@ -119,7 +124,8 @@ class NumpyEDM1(gym.Env):
 
     def reset(self):
         self.z_electrode = 0  # μm
-        self.z_material = -100  # μm
+        # self.z_material = -100  # μm
+        self.z_material = -40  # μm
         self.debris = 0  # μm
 
         sparks = self.spark()
