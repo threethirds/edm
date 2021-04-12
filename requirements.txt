@@ -1,3 +1,2 @@
-numba
-gym
-numpy
+grpcio
+grpcio-tools

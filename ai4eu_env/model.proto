@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package ai.threethirds.edm.env.v1;
+
+message Init {}
+
+message Action {
+  int32 action = 1;
+}
+
+message Observation {
+  double voltage = 1;
+  double sparks = 2;
+}
+
+service Model {
+  rpc reset (Init) returns (Observation);
+  rpc step (Action) returns (Observation);
+}
