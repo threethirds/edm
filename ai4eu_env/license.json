@@ -1,0 +1,18 @@
+{
+  "$schema": "https://raw.githubusercontent.com/acumos/license-manager/master/license-manager-client-library/src/main/resources/schema/1.0.0/license-profile.json",
+  "keyword": "Three-Thirds-Proprietary",
+  "licenseName": "Three Thirds Proprietary License",
+  "copyright": {
+    "year": 2021,
+    "company": "Trys trečiosios",
+    "suffix": "UAB"
+  },
+  "softwareType": "Software, including Machine Learning Model",
+  "companyName": "Trys Trečiosios",
+  "contact": {
+    "name": "Paulius Šarka",
+    "URL": "threethirds.ai",
+    "email": "info@threethirds.ai"
+  },
+  "rtuRequired": true
+}

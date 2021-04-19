@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package ai.threethirds.edm.env.v1;
+package ai.threethirds.edm.agent.v1;
 
 message Init {
   int32 dummy = 1;
@@ -16,6 +16,6 @@ message Observation {
 }
 
 service Model {
-  rpc reset (Init) returns (Observation);
-  rpc step (Action) returns (Observation);
+  rpc reset (Observation) returns (Init);
+  rpc step (Observation) returns (Action);
 }

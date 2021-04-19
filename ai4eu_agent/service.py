@@ -2,7 +2,7 @@ from concurrent import futures
 
 import grpc
 
-from env.edm import NumpyEDM1
+from agent.edm import stub
 import model_pb2
 import model_pb2_grpc
 
@@ -10,25 +10,28 @@ import model_pb2_grpc
 class ModelServicer(model_pb2_grpc.ModelServicer):
 
     def __init__(self):
-        self.env = NumpyEDM1(1)
+        self.agent = stub()
 
     def reset(self, request, context):
         _ = request
         _ = context
 
-        voltage, sparks = self.env.reset()
+        # voltage, sparks = self.agent.reset()
 
-        return model_pb2.Observation(voltage=float(voltage),
-                                     sparks=float(sparks))
+        # return model_pb2.Observation(voltage=float(voltage),
+        #                              sparks=float(sparks))
+        return model_pb2.Init()
 
     def step(self, request, context):
         _ = context
 
-        obs, reward, end, _ = self.env.step(request.action)
-        voltage, sparks = obs
+        # obs, reward, end, _ = self.env.step(request.action)
+        # voltage, sparks = obs
 
-        return model_pb2.Observation(voltage=float(voltage),
-                                     sparks=float(sparks))
+        # return model_pb2.Observation(voltage=float(voltage),
+        #                              sparks=float(sparks))
+
+        return model_pb2.Action(action=1)
 
 
 server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
