@@ -5,4 +5,5 @@ setup(name='edm',
       packages=['env', 'agent'],
       install_requires=['numpy',
                         'numba',
-                        'gym'])
+                        'gym',
+                        'torch'])

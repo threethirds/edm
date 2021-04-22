@@ -1,6 +1,7 @@
 import gym
 from numba import jit
 import numpy as np
+import torch
 
 
 @jit(nopython=True)
@@ -14,7 +15,6 @@ def voltage(d):
 
 
 def jit_spark(Δt, d, debris, sparking_gap, spark_duration, zrr_at_30V):
-
     voltages = []
     Δz = 0
 
@@ -66,13 +66,19 @@ class NumpyEDM1(gym.Env):
     spark_duration = 50  # μs
     mrr_at_30V = 1  # mm^3/s
 
-    def __init__(self, area):
+    def __init__(self, area, flush_penalty=0):
         self.area = area  # mm^2
         self.zrr_at_30V = self.mrr_at_30V / area
 
         self.z_electrode = None  # μm
         self.z_material = None  # μm
         self.debris = None  # μm
+
+        self.observation_space = gym.spaces.Box(low=0, high=255, shape=(2,), dtype=np.uint8)
+        self.action_space = np.arange(4)
+        self.metadata = None
+        self.reward_range = (-1, 1)
+        self.flush_penalty = flush_penalty
 
     def spark(self, Δt=100_000):
 
@@ -108,23 +114,89 @@ class NumpyEDM1(gym.Env):
             reward = np.float32(-1)
         elif action == 3:
             self.debris = 0
+            reward = reward - self.flush_penalty
 
         if self.z_electrode <= self.z_material:
             end = np.bool8(True)
             reward = np.float32(-10)
 
-        sparks = self.spark()
-
-        return sparks, reward, end, {}
+        return self.spark(), reward, end, {}
 
     def reset(self):
         self.z_electrode = 0  # μm
-        self.z_material = -100  # μm
+        self.z_material = -40  # μm
         self.debris = 0  # μm
 
-        sparks = self.spark()
-
-        return sparks
+        return self.spark()
 
     def render(self, mode='human'):
         pass
+
+
+class TorchEnvWrapper(gym.Wrapper):
+
+    def __init__(self, env, device):
+        super().__init__(env)
+        self.device = device
+
+    def step(self, action):
+        obs, reward, done, info = self.env.step(action)
+        obs = torch.from_numpy(obs).to(dtype=torch.float32, device=self.device)
+        reward = torch.from_numpy(reward).to(dtype=torch.float32, device=self.device)
+        done = torch.from_numpy(done).to(dtype=bool, device=self.device)
+        return obs, reward, done, info
+
+    def reset(self, **kwargs):
+        return torch.from_numpy(self.env.reset(**kwargs)).to(dtype=torch.float32, device=self.device)
+
+
+class VectorEnv(gym.Wrapper):
+
+    def __init__(self, envs):
+        self._envs = envs
+
+    def reset(self):
+        res = np.stack([env.reset() for env in self._envs])
+        return res
+
+    def step(self, actions):
+        obss = []
+        rewards = []
+        dones = []
+        infos = []
+        for env, action in zip(self._envs, actions):
+            obs, reward, done, info = env.step(action)
+            if done:
+                obs = env.reset()
+            obss.append(obs)
+            rewards.append(reward)
+            dones.append(done)
+            infos.append(info)
+        obss = np.stack(obss)
+        rewards = np.stack(rewards)
+        dones = np.stack(dones)
+        return obss, rewards, dones, infos
+
+
+class ReturnTracker(gym.Wrapper):
+
+    def __init__(self, env, max_steps=100):
+        super().__init__(env)
+        self.max_steps = max_steps
+
+    def step(self, action):
+        obs, reward, done, info = self.env.step(action)
+        self._return += reward.item()
+        self.cur_step += 1
+        if self.cur_step >= self.max_steps:
+            done = True
+        if done:
+            self._return = 0
+        return obs, reward, done, info
+
+    def reset(self, **kwargs):
+        self._return = 0
+        self.cur_step = 0
+        return self.env.reset(**kwargs)
+
+

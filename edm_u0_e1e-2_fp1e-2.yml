@@ -1,0 +1,15 @@
+cuda: True
+n_envs: 16
+area: 1
+ent_coef: 1.0e-2
+clip_coef: 0.2
+vf_coef: 1
+gamma: 0.99
+lr: 3.0e-4
+max_steps: 1000
+n_episodes: 10_000
+update_epochs: 8
+minibatch_size: 64
+save_freq: 100
+prob_uniform: 0
+flush_penalty: 1.0e-2
