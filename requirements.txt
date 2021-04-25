@@ -1,2 +1,7 @@
 grpcio
 grpcio-tools
+numpy
+numba
+gym
+torch
+bokeh
