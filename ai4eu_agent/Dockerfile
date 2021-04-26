@@ -4,12 +4,10 @@ RUN mkdir -p ~/app
 WORKDIR ~/app
 
 COPY requirements.txt requirements.txt
+RUN pip install torch==1.8.1+cpu -f https://download.pytorch.org/whl/torch_stable.html
 RUN pip install -r requirements.txt
 
-#COPY ai4eu_agent/model.proto model.proto
 COPY ai4eu_env/model.proto model.proto
-COPY ai4eu_env/client.py client.py
-
 COPY ai4eu_agent/service.py service.py
 COPY setup.py setup.py
 COPY agent/ agent/

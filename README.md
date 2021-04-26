@@ -19,11 +19,11 @@ To build AI4EU components from source run
 
     cd edm/
 
-    docker build -t eu.gcr.io/ai4eu-33/edm-agent -f ai4eu_agent/Dockerfile .
-    docker build -t eu.gcr.io/ai4eu-33/edm-env -f ai4eu_env/Dockerfile .
+    docker build -t eu.gcr.io/ai4eu-33/edm-agent:1.0 -f ai4eu_agent/Dockerfile .
+    docker build -t eu.gcr.io/ai4eu-33/edm-env:1.0 -f ai4eu_env/Dockerfile .
 
-    docker push eu.grc.io/ai4eu-33/edm-agent
-    docker push eu.grc.io/ai4eu-33/edm-env
+    docker push eu.gcr.io/ai4eu-33/edm-agent:1.0
+    docker push eu.gcr.io/ai4eu-33/edm-env:1.0
 
 # Running a demo
 
