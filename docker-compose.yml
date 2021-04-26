@@ -1,0 +1,14 @@
+version: "3.9"
+services:
+
+  evn:
+    build:
+      context: .
+      dockerfile: ai4eu_env/Dockerfile
+    network_mode: host
+
+  agent:
+    build:
+      context: .
+      dockerfile: ai4eu_agent/Dockerfile
+    network_mode: host

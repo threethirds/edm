@@ -1,5 +1,6 @@
 from bokeh.layouts import column
 from bokeh.models import Button
+from bokeh.models import ColumnDataSource
 from bokeh.plotting import curdoc
 from bokeh.plotting import figure
 import grpc
@@ -9,52 +10,52 @@ from agent.edm import Network as Agent
 import model_pb2
 import model_pb2_grpc
 
-p1 = figure(plot_width=500, plot_height=200)
-r1 = p1.line(x=[], y=[])
-ds1 = r1.data_source
+ds1 = ColumnDataSource(data=dict(x=[], y=[]))
+p1 = figure(title="Agent action", plot_width=500, plot_height=200)
+r1 = p1.line(x='x', y='y', source=ds1)
 
-p2 = figure(plot_width=500, plot_height=200)
-r2 = p2.line(x=[], y=[])
-ds2 = r2.data_source
+ds2 = ColumnDataSource(data=dict(x=[], y=[]))
+p2 = figure(title="Observed sparking voltage", plot_width=500, plot_height=200)
+r2 = p2.line(x='x', y='y', source=ds2)
 
-p3 = figure(plot_width=500, plot_height=200)
-r3 = p3.line(x=[], y=[])
-ds3 = r3.data_source
+ds3 = ColumnDataSource(data=dict(x=[], y=[]))
+p3 = figure(title="Observed sparking frequency", plot_width=500, plot_height=200)
+r3 = p3.line(x='x', y='y', source=ds3)
 
 agent = Agent(prob_uniform=0.)
 agent.load_state_dict(torch.load('agent_weights.pt'))
 agent.eval()
 agent.running_n = 15937376
 
+channel = grpc.insecure_channel('localhost:8061')
+stub = model_pb2_grpc.ModelStub(channel)
 
-# create a callback that adds a number in a random location
+button_clicked = False
+step = 0
+obs = stub.reset(model_pb2.Init())
+
+
+def periodic_callback():
+    global step
+    global obs
+
+    if not button_clicked or step > 3000:
+        return
+
+    value, a_dist = agent(torch.tensor([obs.voltage, obs.sparks], dtype=torch.float32).unsqueeze(0))
+    a = a_dist.sample()
+    obs = stub.step(model_pb2.Action(action=a.item()))
+    step += 1
+
+    # Action
+    ds1.stream({'x': [step], 'y': [a.item()]})
+    ds2.stream({'x': [step], 'y': [obs.voltage]})
+    ds3.stream({'x': [step], 'y': [obs.sparks]})
+
+
 def callback():
-    with grpc.insecure_channel('localhost:8061') as channel:
-        stub = model_pb2_grpc.ModelStub(channel)
-        obs = stub.reset(model_pb2.Init())
-
-        for step in range(100):
-            value, a_dist = agent(torch.tensor([obs.voltage, obs.sparks], dtype=torch.float32).unsqueeze(0))
-            a = a_dist.sample()
-            obs = stub.step(model_pb2.Action(action=a.item()))
-
-            # Action
-            new_data = dict()
-            new_data['x'] = ds1.data['x'] + [step]
-            new_data['y'] = ds1.data['y'] + [a.item()]
-            ds1.data = new_data
-
-            # Voltage
-            new_data = dict()
-            new_data['x'] = ds2.data['x'] + [step]
-            new_data['y'] = ds2.data['y'] + [obs.voltage]
-            ds2.data = new_data
-
-            # Sparks
-            new_data = dict()
-            new_data['x'] = ds3.data['x'] + [step]
-            new_data['y'] = ds3.data['y'] + [obs.sparks]
-            ds3.data = new_data
+    global button_clicked
+    button_clicked = True
 
 
 # add a button widget and configure with the call back
@@ -62,4 +63,6 @@ button = Button(label="Start control")
 button.on_click(callback)
 
 # put the button and plot in a layout and add to the document
-curdoc().add_root(column(button, p1, p2, p3))
+bokeh_doc = curdoc()
+bokeh_doc.add_root(column(button, p1, p2, p3))
+bokeh_doc.add_periodic_callback(periodic_callback, 10)
