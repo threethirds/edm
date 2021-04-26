@@ -24,6 +24,7 @@ ds3 = r3.data_source
 agent = Agent(prob_uniform=0.)
 agent.load_state_dict(torch.load('agent_weights.pt'))
 agent.eval()
+agent.running_n = 15937376
 
 
 # create a callback that adds a number in a random location
